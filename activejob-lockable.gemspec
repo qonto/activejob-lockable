@@ -10,6 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['dmytro@qonto.eu']
 
   spec.summary       = %q{Prevents jobs from enqueuing with unique arguments for a certain period of time}
+  spec.homepage      = 'https://github.com/qonto/activejob-lockable'
   spec.license       = 'MIT'
 
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
