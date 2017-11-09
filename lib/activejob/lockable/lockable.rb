@@ -42,9 +42,9 @@ module ActiveJob
       end
 
       def lock!
-        return if lock_period.to_i == 0
+        return if lock_period.to_i <= 0
         logger.info "locked with #{lock_key} for #{lock_period} seconds"
-        ActiveJob::Lockable::RedisStore.setex(lock_key, lock_period, self.job_id)
+        ActiveJob::Lockable::RedisStore.setex(lock_key, lock_period.to_i, self.job_id)
       end
 
       def lock_key
