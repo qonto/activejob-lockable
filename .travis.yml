@@ -1,0 +1,13 @@
+sudo: false
+language: ruby
+rvm:
+- 2.4.2
+deploy:
+  skip_cleanup: true
+  provider: rubygems
+  api_key:
+    secure: aD0lrk/+PZnWSJVdDRHFB6kzea1dmJl1nlWXMsyr0s5FlXPGuF1O01LEJIxQSNhl2AiA/yQBbT/ldcEsYyzYvRJWlkXbzzfTNa3pl0MYM3U7lDfAA9oJn2Xis/jiW7pI+vEehIA+6V5rr/V1KBNrxxveWQhcpfiQi7p6efF/XBugCqNhVW8G/NLN2S2Zi5ITFekAHoubYh1h0stFqnt9pxKLlm3eTBjs77DsMtLZtoy5KIMptRCOxTSOGteqFy/saeDWEPTWJWaKZ6zJ4bCQG15WJIJ+J+zcCO3kTD+hZUGkOgsy/lYuwOPu845f16kstPVBkqbcxbCdrQaI5sgwwdGNLF14yzwFS8c309ZC9Wnx6QsfPdQjV6Ol4ZTufVqi3EMEmvJQ78gX2T3J8E/6Cer4Ay2vrny5SyzekFSbGcMPr++iGk4JVn/jgEulAxMvDJoqdrJhETCKAcPlk1EesPUPP5JuXuW6HfDXNEYvv7Bzo2xVuaUsNvSMLsbZai7E2PchkBYApIKg9A6hFkt7ymiAIszMiSDuIj90aBtKpOIoMw6TyRp/x0qXJkPw2UOO22YJHeJanEjKtc2jk3r65FPCRKna3GcHXBXGAcJTKP2fJdBcRKtB7Y/SjRq84uDZJxwNKRBfyCittpMuu20uln+ylQzE9hnM28O7dOUfNBs=
+  gem: activejob-lockable
+  on:
+    tags: true
+    repo: qonto/activejob-lockable

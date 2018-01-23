@@ -1,4 +1,4 @@
-# ActiveJob::Lockable
+# ActiveJob::Lockable [![Build Status](https://travis-ci.org/qonto/activejob-lockable.svg?branch=master)](https://travis-ci.org/qonto/activejob-lockable)
 
 Gem to make to make jobs lockable. Useful when a job is called N times, but only a single execution is needed.
 
