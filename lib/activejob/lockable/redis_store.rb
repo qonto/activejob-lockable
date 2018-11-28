@@ -13,6 +13,10 @@ module ActiveJob
         def ttl(cache_key)
           ActiveJob::Lockable.redis.ttl(cache_key)
         end
+
+        def del(cache_key)
+          ActiveJob::Lockable.redis.del(cache_key)
+        end
       end
     end
   end

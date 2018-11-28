@@ -35,6 +35,32 @@ RSpec.describe ActiveJob::Lockable, type: :job do
     end
   end
 
+  context '#unlock!' do
+    let(:job) { subject.new(argument_id) }
+
+    context 'is set' do
+      it 'should delete the key for the job' do
+        expect(ActiveJob::Lockable::RedisStore).to receive(:del).with(job.lock_key)
+        subject.set(lock: 2).perform_later(argument_id)
+        job.unlock!
+      end
+
+      it 'should become unlocked' do
+        subject.set(lock: 2).perform_later(argument_id)
+        job.unlock!
+        expect(job.locked?).to eq false
+      end
+    end
+
+    context 'is not set' do
+      it 'should return directly' do
+        expect(ActiveJob::Lockable::RedisStore).not_to receive(:del).with(any_args)
+        subject.perform_later(argument_id)
+        job.unlock!
+      end
+    end
+  end
+
   context '#lock_period' do
     context 'without value' do
       it 'should not be lockable' do
