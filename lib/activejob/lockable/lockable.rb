@@ -36,6 +36,12 @@ module ActiveJob
         end
       end
 
+      def unlock!
+        return unless locked?
+        logger.info "unlocked with #{lock_key}. Job_id: #{self.job_id} class_name: #{self.class}"
+        ActiveJob::Lockable::RedisStore.del(lock_key)
+      end
+
       def lock_key
         md5 = Digest::MD5.hexdigest(self.arguments.join)
         "#{self.class.name.downcase}:#{md5}"
