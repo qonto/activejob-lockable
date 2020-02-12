@@ -30,8 +30,7 @@ module ActiveJob
       end
     end
 
-    # Returns the current Redis connection. If none has been created, will
-    # create a new one.
+    # Returns the current Redis connection, raising an error if it hasn't been created
     def redis
       return @redis if @redis
       raise 'Redis is not configured'
