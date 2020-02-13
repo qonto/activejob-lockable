@@ -17,7 +17,7 @@ module ActiveJob
       def enqueue(options = {})
         @options = options
         if locked?
-          logger.info "job is locked, expires in #{locked_ttl} second"
+          logger.info "Job is locked, expires in #{locked_ttl} second(s)"
           send(on_locked_action) if on_locked_action && respond_to?(on_locked_action)
         else
           lock!
@@ -27,18 +27,25 @@ module ActiveJob
 
       def lock!
         return if lock_period.to_i <= 0
-        logger.info "locked with #{lock_key} for #{lock_period} seconds. Job_id: #{self.job_id} class_name: #{self.class}"
+        logger.info "Acquiring lock #{lock_extra_info}"
         begin
-          ActiveJob::Lockable::RedisStore.setex(lock_key, lock_period, self.job_id)
-        rescue => e
-          logger.info "EXCEPTION: locked with #{lock_key} for #{lock_period} seconds. Job_id: #{self.job_id} class_name: #{self.class}"
-          raise e
+          # `:ex => Fixnum`: Set the specified expire time, in seconds.
+          # `:nx => true`: Only set the key if it does not already exist.
+          lock_acquired = ActiveJob::Lockable::RedisStore.set(
+            lock_key,
+            self.job_id,
+            { ex: lock_period.to_i, nx: true }
+          )
+          raise "Could not acquire lock #{lock_extra_info}" unless lock_acquired
+        rescue StandardError => e
+          logger.info "EXCEPTION acquiring lock #{lock_extra_info}"
+          raise
         end
       end
 
       def unlock!
         return unless locked?
-        logger.info "unlocked with #{lock_key}. Job_id: #{self.job_id} class_name: #{self.class}"
+        logger.info "Releasing lock #{lock_extra_info}"
         ActiveJob::Lockable::RedisStore.del(lock_key)
       end
 
@@ -58,7 +65,13 @@ module ActiveJob
       private
 
       def lock_period
-        options[:lock]
+        return 0 unless options
+
+        options[:lock].to_i
+      end
+
+      def lock_extra_info
+        "[key #{lock_key}] [seconds #{lock_period.to_i}] [job_id #{self.job_id}] [class_name: #{self.class}]"
       end
     end
   end
