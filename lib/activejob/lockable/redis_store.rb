@@ -2,8 +2,8 @@ module ActiveJob
   module Lockable
     class RedisStore
       class << self
-        def setex(cache_key, expiration, cache_value)
-          ActiveJob::Lockable.redis.setex(cache_key, expiration, cache_value)
+        def set(cache_key, cache_value, options = {})
+          ActiveJob::Lockable.redis.set(cache_key, cache_value, options)
         end
 
         def exists?(cache_key)

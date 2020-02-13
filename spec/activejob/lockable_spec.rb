@@ -15,45 +15,84 @@ RSpec.describe ActiveJob::Lockable, type: :job do
   subject { LockableJob }
   let(:argument_id) { SecureRandom.uuid }
 
-  context 'when lock' do
-    context 'is set' do
-      it 'should raise exception when argument is locked' do
+  describe '#lock!' do
+    context 'when Redis store acquires a lock' do
+      before do
+        allow(ActiveJob::Lockable::RedisStore).to receive(:set)
+          .with(String, String, { ex: 2, nx: true })
+          .and_return(true)
+      end
+
+      it 'does not raise error' do
+        expect{ subject.set(lock: 2).perform_later(argument_id) }.not_to raise_error
+      end
+    end
+
+    context 'when Redis store does not acquire a lock' do
+      before do
+        allow(ActiveJob::Lockable::RedisStore).to receive(:set)
+          .with(String, String, { ex: 2, nx: true })
+          .and_return(false)
+      end
+
+      it 'raises an error' do
+        expect{ subject.set(lock: 2).perform_later(argument_id) }.to raise_error(StandardError)
+      end
+    end
+
+    context 'when Redis store encounters an error while acquiring a lock' do
+      before do
+        allow(ActiveJob::Lockable::RedisStore).to receive(:set)
+          .with(String, String, { ex: 2, nx: true })
+          .and_raise 'Whoops, Redis is offline'
+      end
+
+      it 'raises an error' do
+        expect{ subject.set(lock: 2).perform_later(argument_id) }.to raise_error(StandardError)
+      end
+    end
+  end
+
+  describe ':call_method' do
+    context 'when set' do
+      it 'does not enqueue and calls method when argument is locked' do
         expect{ subject.set(lock: 2).perform_later(argument_id) }.to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size).by(1)
         expect{ subject.set(lock: 2).perform_later(argument_id) }.to raise_error("argument #{[argument_id]} is locked")
       end
     end
 
-    context 'is not set' do
+    context 'when not set' do
       before do
         allow_any_instance_of(subject).to receive(:on_locked_action).and_return(nil)
       end
 
-      it 'should not enqueue and raise no exception' do
+      it 'does not enqueue and does not call method when argument is locked' do
         expect{ subject.set(lock: 2).perform_later(argument_id) }.to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size).by(1)
         expect{ subject.set(lock: 2).perform_later(argument_id) }.to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size).by(0)
+        expect{ subject.set(lock: 2).perform_later(argument_id) }.not_to raise_error
       end
     end
   end
 
-  context '#unlock!' do
+  describe '#unlock!' do
     let(:job) { subject.new(argument_id) }
 
-    context 'is set' do
-      it 'should delete the key for the job' do
+    context 'when locked' do
+      it 'deletes the key for the job' do
         expect(ActiveJob::Lockable::RedisStore).to receive(:del).with(job.lock_key)
         subject.set(lock: 2).perform_later(argument_id)
         job.unlock!
       end
 
-      it 'should become unlocked' do
+      it 'becomes unlocked' do
         subject.set(lock: 2).perform_later(argument_id)
         job.unlock!
         expect(job.locked?).to eq false
       end
     end
 
-    context 'is not set' do
-      it 'should return directly' do
+    context 'when not locked' do
+      it 'returns directly' do
         expect(ActiveJob::Lockable::RedisStore).not_to receive(:del).with(any_args)
         subject.perform_later(argument_id)
         job.unlock!
@@ -61,9 +100,9 @@ RSpec.describe ActiveJob::Lockable, type: :job do
     end
   end
 
-  context '#lock_period' do
+  describe '#lock_period' do
     context 'without value' do
-      it 'should not be lockable' do
+      it 'is not lockable' do
         expect{ subject.perform_later(argument_id) }.to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size).by(1)
         expect{ subject.perform_later(argument_id) }.to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size).by(1)
       end
@@ -74,16 +113,18 @@ RSpec.describe ActiveJob::Lockable, type: :job do
         allow_any_instance_of(subject).to receive(:on_locked_action).and_return(nil)
       end
 
-      it 'should be lockable' do
-        expect(ActiveJob::Lockable::RedisStore).to receive(:setex)
-          .with(String, 10.seconds, any_args)
+      it 'is lockable' do
+        expect(ActiveJob::Lockable::RedisStore).to receive(:set)
+          .with(String, String, { ex: 10, nx: true })
+          .and_return(true)
         subject.set(lock: 10.seconds).perform_later(argument_id)
 
-        expect(ActiveJob::Lockable::RedisStore).to receive(:setex)
-          .with(String, 2.seconds, any_args)
+        expect(ActiveJob::Lockable::RedisStore).to receive(:set)
+          .with(String, String, { ex: 2, nx: true })
+          .and_return(true)
         subject.set(lock: 2.seconds).perform_later(argument_id)
 
-        expect(ActiveJob::Lockable::RedisStore).not_to receive(:setex)
+        expect(ActiveJob::Lockable::RedisStore).not_to receive(:set)
           .with(any_args)
         subject.perform_later(argument_id)
       end
@@ -100,9 +141,10 @@ RSpec.describe ActiveJob::Lockable, type: :job do
 
       subject { CustomLockablePeriodJob }
 
-      it 'should lock and always use default' do
-        expect(ActiveJob::Lockable::RedisStore).to receive(:setex)
-          .with(String, 5.seconds, any_args)
+      it 'locks and always use overridden value' do
+        expect(ActiveJob::Lockable::RedisStore).to receive(:set)
+          .with(String, String, { ex: 5, nx: true })
+          .and_return(true)
           .exactly(3)
 
         subject.set(lock: 10.seconds).perform_later(argument_id)
@@ -112,18 +154,18 @@ RSpec.describe ActiveJob::Lockable, type: :job do
     end
   end
 
-  context '#lock_key' do
-
-    context 'by default' do
+  describe '#lock_key' do
+    context 'with default value' do
       let(:lock_key) { "#{subject.name.downcase}:#{Digest::MD5.hexdigest([argument_id].join)}" }
-      it 'should match md5 of argument' do
-        expect(ActiveJob::Lockable::RedisStore).to receive(:setex)
-          .with(lock_key, 2.seconds, any_args)
+      it 'matches md5 of argument' do
+        expect(ActiveJob::Lockable::RedisStore).to receive(:set)
+          .with(lock_key, String, { ex: 2, nx: true })
+          .and_return(true)
         subject.set(lock: 2.seconds).perform_later(argument_id)
       end
     end
 
-    context 'overridden' do
+    context 'with overridden value' do
       class CustomLockKeyJob < LockableJob
         on_locked nil
 
@@ -136,9 +178,10 @@ RSpec.describe ActiveJob::Lockable, type: :job do
 
       subject { CustomLockKeyJob }
 
-      it 'should match the value of method' do
-        expect(ActiveJob::Lockable::RedisStore).to receive(:setex)
-          .with(lock_key, 2.seconds, any_args)
+      it 'matches the overridden value' do
+        expect(ActiveJob::Lockable::RedisStore).to receive(:set)
+          .with(lock_key, String, { ex: 2, nx: true })
+          .and_return(true)
         subject.set(lock: 2.seconds).perform_later(argument_id)
       end
     end
