@@ -39,7 +39,7 @@ module ActiveJob
           raise "Could not acquire lock #{lock_extra_info}" unless lock_acquired
         rescue StandardError => e
           logger.info "EXCEPTION acquiring lock #{lock_extra_info}"
-          raise e
+          raise
         end
       end
 
