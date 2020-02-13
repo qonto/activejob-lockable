@@ -65,7 +65,9 @@ module ActiveJob
       private
 
       def lock_period
-        options&.fetch(:lock, 0).to_i
+        return 0 unless options
+
+        options[:lock].to_i
       end
 
       def lock_extra_info
