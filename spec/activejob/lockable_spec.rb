@@ -5,7 +5,7 @@ RSpec.describe ActiveJob::Lockable, type: :job do
     on_locked :call_method
 
     def call_method
-      raise "argument #{self.arguments} is locked"
+      "on_locked_action called with arguments #{self.arguments}"
     end
 
     def perform(argument_id)
@@ -23,8 +23,9 @@ RSpec.describe ActiveJob::Lockable, type: :job do
           .and_return(true)
       end
 
-      it 'does not raise error' do
-        expect{ subject.set(lock: 2).perform_later(argument_id) }.not_to raise_error
+      it 'enqueues the job' do
+        expect{ subject.set(lock: 2).perform_later(argument_id) }
+          .to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size).by(1)
       end
     end
 
@@ -35,8 +36,9 @@ RSpec.describe ActiveJob::Lockable, type: :job do
           .and_return(false)
       end
 
-      it 'raises an error' do
-        expect{ subject.set(lock: 2).perform_later(argument_id) }.to raise_error(StandardError)
+      it 'does not enqueue the job again' do
+        expect{ subject.set(lock: 2).perform_later(argument_id) }
+          .not_to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size)
       end
     end
 
@@ -48,28 +50,32 @@ RSpec.describe ActiveJob::Lockable, type: :job do
       end
 
       it 'raises an error' do
-        expect{ subject.set(lock: 2).perform_later(argument_id) }.to raise_error(StandardError)
+        expect{ subject.set(lock: 2).perform_later(argument_id) }
+          .to raise_error(StandardError)
       end
     end
   end
 
-  describe ':call_method' do
-    context 'when set' do
-      it 'does not enqueue and calls method when argument is locked' do
-        expect{ subject.set(lock: 2).perform_later(argument_id) }.to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size).by(1)
-        expect{ subject.set(lock: 2).perform_later(argument_id) }.to raise_error("argument #{[argument_id]} is locked")
+  describe ':on_locked_action' do
+    context 'when locked' do
+      before do
+        allow(ActiveJob::Lockable::RedisStore).to receive(:set).and_return(false)
+      end
+
+      it 'calls the method' do
+        expect(subject.set(lock: 2).perform_later(argument_id))
+          .to eq("on_locked_action called with arguments #{[argument_id]}")
       end
     end
 
-    context 'when not set' do
+    context 'when not locked' do
       before do
-        allow_any_instance_of(subject).to receive(:on_locked_action).and_return(nil)
+        allow(ActiveJob::Lockable::RedisStore).to receive(:set).and_return(true)
       end
 
-      it 'does not enqueue and does not call method when argument is locked' do
-        expect{ subject.set(lock: 2).perform_later(argument_id) }.to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size).by(1)
-        expect{ subject.set(lock: 2).perform_later(argument_id) }.to change(ActiveJob::Base.queue_adapter.enqueued_jobs, :size).by(0)
-        expect{ subject.set(lock: 2).perform_later(argument_id) }.not_to raise_error
+      it 'does not call the method' do
+        expect(subject.set(lock: 2).perform_later(argument_id))
+          .to be_a(LockableJob)
       end
     end
   end
