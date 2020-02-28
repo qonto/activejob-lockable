@@ -66,7 +66,7 @@ module ActiveJob
 
       def trigger_on_locked_action
         logger.info "Job is locked, expires in #{locked_ttl} second(s)"
-        send(on_locked_action) if on_locked_action && respond_to?(on_locked_action)
+        public_send(on_locked_action) if on_locked_action && respond_to?(on_locked_action)
       end
 
       def lock_extra_info
