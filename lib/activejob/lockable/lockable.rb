@@ -44,7 +44,7 @@ module ActiveJob
       end
 
       def lock_key
-        md5 = Digest::MD5.hexdigest(self.arguments.join)
+        md5 = Digest::MD5.hexdigest(self.arguments.compact.join)
         "#{self.class.name.downcase}:#{md5}"
       end
 

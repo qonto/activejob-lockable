@@ -169,6 +169,13 @@ RSpec.describe ActiveJob::Lockable, type: :job do
           .and_return(true)
         subject.set(lock: 2.seconds).perform_later(argument_id)
       end
+
+      it 'matches md5 of argument_id even with an added nil param' do
+        expect(ActiveJob::Lockable::RedisStore).to receive(:set)
+          .with(lock_key, String, { ex: 2, nx: true })
+          .and_return(true)
+        subject.set(lock: 2.seconds).perform_later(argument_id, nil)
+      end
     end
 
     context 'with overridden value' do
