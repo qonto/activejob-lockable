@@ -49,7 +49,7 @@ module ActiveJob
       end
 
       def locked?
-        ActiveJob::Lockable::RedisStore.exists?(lock_key)
+        ActiveJob::Lockable::RedisStore.exists?(lock_key) != 0
       end
 
       def locked_ttl

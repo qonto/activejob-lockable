@@ -3,7 +3,7 @@ module ActiveJob
     class RedisStore
       class << self
         def set(cache_key, cache_value, options = {})
-          ActiveJob::Lockable.redis.set(cache_key, cache_value, options)
+          ActiveJob::Lockable.redis.set(cache_key, cache_value, **options)
         end
 
         def exists?(cache_key)
