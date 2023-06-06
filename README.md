@@ -1,4 +1,6 @@
-# ActiveJob::Lockable [![Build Status](https://travis-ci.org/qonto/activejob-lockable.svg?branch=master)](https://travis-ci.org/qonto/activejob-lockable)
+![Gem Version](https://badge.fury.io/rb/activejob-lockable.svg) ![CI Status](https://github.com/qonto/activejob-lockable/actions/workflows/tests.yml/badge.svg)
+
+# ActiveJob::Lockable
 
 Gem to make to make jobs lockable. Useful when a job is called N times, but only a single execution is needed.
 
@@ -17,7 +19,7 @@ And then execute:
 Or install it yourself as:
 
     $ gem install activejob-lockable
-    
+
 ## Configuration
 
 Create an initializer with redis connection:
@@ -102,3 +104,7 @@ Bug reports and pull requests are welcome on GitHub at [qonto/activejob-lockable
 ## License
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
+
+## Releasing
+
+To publish a new version to rubygems, update the version in `lib/activejob/lockable/version.rb`, and merge.
